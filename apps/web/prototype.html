@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NBA 球评写作工作台 · 原型</title>
+  <style>
+    :root {
+      --ink: #1f2430;
+      --paper: #f8f3e8;
+      --accent: #b85b2b;
+      --accent-2: #1b7f77;
+      --muted: #6b6f76;
+      --panel: #fffaf0;
+      --shadow: rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "PingFang SC", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(1000px 600px at 15% 0%, #fff2d6 0%, var(--paper) 50%, #f0efe9 100%);
+    }
+    header {
+      padding: 20px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eadfcb;
+      background: linear-gradient(90deg, #fff8e8, #f6f0e2);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.4px;
+    }
+    header .status {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    main {
+      display: grid;
+      grid-template-columns: 1.05fr 1.4fr;
+      gap: 18px;
+      padding: 18px;
+      height: calc(100vh - 64px);
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #eadfcb;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel header {
+      background: #fff4dd;
+      border-bottom: 1px solid #eadfcb;
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .chat-body, .preview-body {
+      padding: 16px;
+      overflow: auto;
+      flex: 1;
+    }
+    .chat-input {
+      border-top: 1px solid #eadfcb;
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+      background: #fffaf0;
+    }
+    .chat-input input {
+      flex: 1;
+      border: 1px solid #eadfcb;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .chat-input button {
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .bubble {
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      max-width: 85%;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .user { background: #ffe9c7; align-self: flex-end; }
+    .ai { background: #e7f3f1; align-self: flex-start; }
+    .preview-body h2 {
+      font-family: "IBM Plex Serif", "Songti SC", serif;
+      font-size: 20px;
+      margin: 0 0 10px 0;
+    }
+    .preview-body p {
+      font-family: "IBM Plex Serif", "Songti SC", serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .quote {
+      border-left: 3px solid var(--accent-2);
+      padding-left: 10px;
+      background: #f0fbf9;
+    }
+    .source {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .highlight {
+      background: #fff1a8;
+    }
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NBA 球评写作工作台</h1>
+    <div class="status">状态：原型 · 左对话 / 右预览</div>
+  </header>
+  <main>
+    <section class="panel">
+      <header>对话区</header>
+      <div class="chat-body" id="chatBody">
+        <div class="bubble ai">今天想写点什么？</div>
+        <div class="bubble user">想分析一下湖人最近的防守轮转。</div>
+        <div class="bubble ai">我会先核对最近5场的防守效率、对手命中率，以及阵容轮转变化，再给你一个逻辑框架。</div>
+      </div>
+      <div class="chat-input">
+        <input type="text" placeholder="输入你的想法…" />
+        <button>发送</button>
+      </div>
+    </section>
+    <section class="panel">
+      <header>生成预览</header>
+      <div class="preview-body" id="previewBody">
+        <h2>湖人防守轮转的关键断点</h2>
+        <p>最近五场，湖人的防守效率出现明显波动，其中一个直接原因是弱侧轮转的协防迟到与沟通断裂。尤其是在对手持球挡拆后，后侧的补位频率下降，导致内线被迫二次补防。</p>
+        <p class="quote">当主防在外线被换防拉开后，弱侧大个的脚步没有及时跟上，这是造成空位三分的主要来源。</p>
+        <p class="source">数据来源：nba.com 防守数据（更新时间：每小时）</p>
+      </div>
+    </section>
+  </main>
+  <script>
+    const preview = document.getElementById('previewBody');
+    preview.addEventListener('mouseup', () => {
+      const sel = window.getSelection();
+      if (!sel || sel.toString().trim().length === 0) return;
+      const range = sel.getRangeAt(0);
+      const span = document.createElement('span');
+      span.className = 'highlight';
+      range.surroundContents(span);
+      sel.removeAllRanges();
+    });
+  </script>
+</body>
+</html>
