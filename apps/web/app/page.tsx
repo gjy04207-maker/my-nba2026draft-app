@@ -2,7 +2,9 @@
 
 import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE ||
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '');
 
 type DraftAssetType = 'roster_player' | 'drafted_rights';
 type ControlMode = 'selected_teams_manual' | 'all_teams_manual' | 'full_auto';
