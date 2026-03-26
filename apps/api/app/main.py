@@ -7,21 +7,21 @@ import time
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import psycopg2
-from . import draft_data
+from . import draft_data, live_sync, runtime_state
 
 ROOT = Path(__file__).resolve().parents[3]
 CBA_JSONL = ROOT / "data" / "cba" / "parsed" / "cba_paragraphs.jsonl"
 DB_DSN = "dbname=nba_writer"
 
-app = FastAPI(title="CBA Search API", version="0.1.0")
+app = FastAPI(title="Mock Draft API", version="0.2.0")
 
 cors_allow_origins = [origin.strip() for origin in os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000").split(",") if origin.strip()]
 cors_allow_origin_regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
@@ -251,6 +251,16 @@ class TradeEvaluateResponse(BaseModel):
     counted_assets: List[TradeAssetDescriptor] = Field(default_factory=list)
     ignored_assets: List[TradeAssetDescriptor] = Field(default_factory=list)
     reason: str
+
+
+class AdminRuntimePublishRequest(BaseModel):
+    payload: Dict[str, Any]
+    source: str = "admin_runtime_publish"
+
+
+class AdminRuntimeSyncRequest(BaseModel):
+    refresh_rosters: bool = True
+    refresh_records: bool = True
 
 
 
@@ -770,8 +780,42 @@ def _render_fallback_full_draft(
     )
 
 
-def _get_draft_data() -> dict:
-    return draft_data.get_draft_data()
+def _get_draft_data(force_refresh: bool = False) -> dict:
+    return draft_data.get_draft_data(force_refresh=force_refresh)
+
+
+def _require_admin_token(x_admin_token: Optional[str] = Header(default=None)) -> None:
+    expected = os.getenv("ADMIN_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(status_code=503, detail="ADMIN_TOKEN is not configured.")
+    if x_admin_token != expected:
+        raise HTTPException(status_code=401, detail="Invalid admin token.")
+
+
+def _validate_runtime_payload(payload: dict[str, Any]) -> None:
+    required_keys = ["teams", "players", "boards", "draft_order", "order_sources", "pick_values"]
+    missing = [key for key in required_keys if key not in payload]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Runtime payload is missing required keys: {', '.join(missing)}")
+
+
+def _save_runtime_payload(payload: dict[str, Any], source: str) -> dict[str, Any]:
+    try:
+        return runtime_state.save_runtime_state(payload, source=source)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def _runtime_status_payload(data: dict[str, Any]) -> dict[str, Any]:
+    summary = runtime_state.describe_runtime_state()
+    return {
+        **summary,
+        "updated_at": data.get("updated_at"),
+        "teams_count": len(data.get("teams", [])),
+        "players_count": len(data.get("players", [])),
+        "order_count": len(data.get("draft_order", [])),
+        "live_context": data.get("live_context", {}),
+    }
 
 
 def _build_default_original_team_order(draft_order: list[dict]) -> list[str]:
@@ -1018,7 +1062,16 @@ def _evaluate_trade_request(data: dict, payload: TradeEvaluateRequest) -> dict:
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return {
+        "ok": True,
+        "storage_mode": runtime_state.get_storage_mode(),
+    }
+
+
+@app.get("/api/draft/runtime-status")
+def draft_runtime_status():
+    data = _get_draft_data(force_refresh=True)
+    return _runtime_status_payload(data)
 
 
 @app.get("/api/draft/meta", response_model=DraftMetaResponse)
@@ -1067,6 +1120,51 @@ def draft_pick(payload: DraftPickRequest):
 def trade_evaluate(payload: TradeEvaluateRequest):
     data = _get_draft_data()
     return TradeEvaluateResponse(**_evaluate_trade_request(data, payload))
+
+
+@app.get("/api/admin/runtime/status")
+def admin_runtime_status(_: None = Depends(_require_admin_token)):
+    data = _get_draft_data(force_refresh=True)
+    return _runtime_status_payload(data)
+
+
+@app.post("/api/admin/runtime/publish")
+def admin_runtime_publish(payload: AdminRuntimePublishRequest, _: None = Depends(_require_admin_token)):
+    _validate_runtime_payload(payload.payload)
+    runtime_payload = dict(payload.payload)
+    live_context = dict(runtime_payload.get("live_context", {}))
+    live_context["published_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    live_context["published_source"] = payload.source
+    runtime_payload["live_context"] = live_context
+    result = _save_runtime_payload(runtime_payload, source=payload.source)
+    draft_data.reset_cache()
+    refreshed = _get_draft_data(force_refresh=True)
+    return {
+        "ok": True,
+        **result,
+        "updated_at": refreshed.get("updated_at"),
+        "teams_count": len(refreshed.get("teams", [])),
+        "players_count": len(refreshed.get("players", [])),
+    }
+
+
+@app.post("/api/admin/runtime/sync")
+def admin_runtime_sync(payload: AdminRuntimeSyncRequest, _: None = Depends(_require_admin_token)):
+    base_data = _get_draft_data(force_refresh=True)
+    synced = live_sync.refresh_runtime_data(
+        base_data,
+        refresh_rosters=payload.refresh_rosters,
+        refresh_records=payload.refresh_records,
+    )
+    result = _save_runtime_payload(synced, source="admin_runtime_sync")
+    draft_data.reset_cache()
+    refreshed = _get_draft_data(force_refresh=True)
+    return {
+        "ok": True,
+        **result,
+        "updated_at": refreshed.get("updated_at"),
+        "live_context": refreshed.get("live_context", {}),
+    }
 
 
 @app.get("/cba/search", response_model=CBASearchResponse)

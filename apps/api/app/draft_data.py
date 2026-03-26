@@ -6,6 +6,8 @@ import time
 from pathlib import Path
 from typing import Dict, List
 
+from . import runtime_state
+
 ROOT = Path(__file__).resolve().parents[3]
 DATA_DIR = ROOT / "data" / "draft"
 
@@ -198,14 +200,26 @@ def _default_data() -> dict:
     }
 
 
-def get_draft_data() -> dict:
-    now = time.time()
-    if _CACHE["data"] and now - _CACHE["ts"] < CACHE_TTL_SECONDS:
-        return _CACHE["data"]
-
+def get_repository_draft_data() -> dict:
     payload = _load_json(DATA_DIR / "draft_data.json")
     if not payload:
         payload = _default_data()
+    return payload
+
+
+def reset_cache() -> None:
+    _CACHE["ts"] = 0.0
+    _CACHE["data"] = None
+
+
+def get_draft_data(force_refresh: bool = False) -> dict:
+    now = time.time()
+    if not force_refresh and _CACHE["data"] and now - _CACHE["ts"] < CACHE_TTL_SECONDS:
+        return _CACHE["data"]
+
+    payload = runtime_state.load_runtime_state()
+    if not payload:
+        payload = get_repository_draft_data()
 
     _CACHE["data"] = payload
     _CACHE["ts"] = now
