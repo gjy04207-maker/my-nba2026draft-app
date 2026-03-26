@@ -9,3 +9,5 @@ __pycache__/
 .next/
 .dist/
 coverage/
+
+apps/api/app/cba_paragraphs.jsonl
