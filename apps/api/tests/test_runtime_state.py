@@ -62,6 +62,20 @@ class RuntimeStateStorageTests(unittest.TestCase):
                 self.assertEqual(loaded["updated_at"], "2026-03-26T12:00:00Z")
                 self.assertEqual(loaded["live_context"]["sync_status"], "live")
 
+    def test_draft_data_falls_back_to_repository_when_runtime_load_fails(self) -> None:
+        repository_payload = draft_data.get_repository_draft_data()
+        with patch("apps.api.app.runtime_state.load_runtime_state", side_effect=RuntimeError("db down")):
+            draft_data.reset_cache()
+            loaded = draft_data.get_draft_data(force_refresh=True)
+        self.assertEqual(loaded["updated_at"], repository_payload["updated_at"])
+        self.assertEqual(len(loaded["players"]), len(repository_payload["players"]))
+
+    def test_describe_runtime_state_reports_error_instead_of_raising(self) -> None:
+        with patch("apps.api.app.runtime_state.load_runtime_state", side_effect=RuntimeError("db down")):
+            summary = runtime_state.describe_runtime_state()
+        self.assertEqual(summary["has_persisted_state"], False)
+        self.assertEqual(summary["runtime_error"], "db down")
+
 
 class LiveSyncHelpersTests(unittest.TestCase):
     def test_parse_record_summary(self) -> None:

@@ -217,7 +217,11 @@ def get_draft_data(force_refresh: bool = False) -> dict:
     if not force_refresh and _CACHE["data"] and now - _CACHE["ts"] < CACHE_TTL_SECONDS:
         return _CACHE["data"]
 
-    payload = runtime_state.load_runtime_state()
+    try:
+        payload = runtime_state.load_runtime_state()
+    except Exception:
+        payload = None
+
     if not payload:
         payload = get_repository_draft_data()
 

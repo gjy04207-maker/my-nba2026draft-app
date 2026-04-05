@@ -126,11 +126,19 @@ def save_runtime_state(payload: dict[str, Any], source: str) -> dict[str, Any]:
 
 
 def describe_runtime_state() -> dict[str, Any]:
-    state = load_runtime_state()
+    runtime_error = None
+    try:
+        state = load_runtime_state()
+    except Exception as exc:  # pragma: no cover - defensive status reporting
+        state = None
+        runtime_error = str(exc)
     state_path = _runtime_state_path()
-    return {
+    summary = {
         "storage_mode": get_storage_mode(),
         "has_persisted_state": state is not None,
         "state_path": str(state_path) if state_path else None,
         "database_configured": bool(_database_url()),
     }
+    if runtime_error:
+        summary["runtime_error"] = runtime_error
+    return summary
