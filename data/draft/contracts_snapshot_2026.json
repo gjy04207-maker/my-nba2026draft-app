@@ -1,6 +1,395 @@
 {
-  "updated_at": "2026-04-06T00:00:00Z",
-  "source": "local_offseason_contract_snapshot",
+  "updated_at": "2026-04-06T12:36:41Z",
+  "source": "manual_image_snapshot_20260318_first_pass",
   "default_status": "guaranteed",
-  "teams": {}
+  "teams": {
+    "ATL": {
+      "players": {
+        "Gabe Vincent": {
+          "contract_status": "ufa"
+        },
+        "Jock Landale": {
+          "contract_status": "ufa"
+        },
+        "Buddy Hield": {
+          "contract_status": "ufa"
+        },
+        "CJ McCollum": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "BKN": {
+      "players": {
+        "Jalen Wilson": {
+          "contract_status": "rfa"
+        }
+      }
+    },
+    "BOS": {
+      "players": {
+        "Nikola Vucevic": {
+          "contract_status": "ufa"
+        },
+        "Jordan Walsh": {
+          "contract_status": "non_guaranteed"
+        }
+      }
+    },
+    "CHA": {
+      "players": {
+        "Coby White": {
+          "contract_status": "ufa"
+        },
+        "Moussa Diabate": {
+          "contract_status": "rfa"
+        }
+      }
+    },
+    "CHI": {
+      "players": {
+        "Anfernee Simons": {
+          "contract_status": "ufa"
+        },
+        "Collin Sexton": {
+          "contract_status": "ufa"
+        },
+        "Zach Collins": {
+          "contract_status": "ufa"
+        },
+        "Nick Richards": {
+          "contract_status": "ufa"
+        },
+        "Leonard Miller": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "CLE": {
+      "players": {
+        "Keon Ellis": {
+          "contract_status": "ufa"
+        },
+        "Larry Nance Jr.": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "DAL": {
+      "players": {
+        "Brandon Williams": {
+          "contract_status": "ufa"
+        },
+        "Ryan Nembhard": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        },
+        "AJ Johnson": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "DEN": {
+      "players": {
+        "Tyus Jones": {
+          "contract_status": "ufa"
+        },
+        "Bruce Brown": {
+          "contract_status": "ufa"
+        },
+        "Tim Hardaway Jr.": {
+          "contract_status": "ufa"
+        },
+        "Peyton Watson": {
+          "contract_status": "rfa"
+        },
+        "Jalen Pickett": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "DET": {
+      "players": {
+        "Tobias Harris": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "GSW": {
+      "players": {
+        "Seth Curry": {
+          "contract_status": "ufa"
+        },
+        "Kristaps Porzingis": {
+          "contract_status": "ufa"
+        },
+        "De'Anthony Melton": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        },
+        "Al Horford": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "HOU": {
+      "players": {
+        "Aaron Holiday": {
+          "contract_status": "ufa"
+        },
+        "Josh Okogie": {
+          "contract_status": "ufa"
+        },
+        "Clint Capela": {
+          "contract_status": "ufa"
+        },
+        "Tari Eason": {
+          "contract_status": "rfa"
+        },
+        "Fred VanVleet": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "IND": {
+      "players": {
+        "Ivica Zubac": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "LAC": {
+      "players": {
+        "Bennedict Mathurin": {
+          "contract_status": "rfa"
+        },
+        "Jordan Miller": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "LAL": {
+      "players": {
+        "Luke Kennard": {
+          "contract_status": "ufa"
+        },
+        "Jaxson Hayes": {
+          "contract_status": "ufa"
+        },
+        "Bronny James": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        },
+        "Marcus Smart": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        },
+        "Deandre Ayton": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "MEM": {
+      "players": {
+        "Cam Spencer": {
+          "contract_status": "rfa"
+        },
+        "Scotty Pippen Jr.": {
+          "contract_status": "non_guaranteed"
+        },
+        "Jaylen Wells": {
+          "contract_status": "non_guaranteed"
+        }
+      }
+    },
+    "MIA": {
+      "players": {
+        "Terry Rozier": {
+          "contract_status": "ufa"
+        },
+        "Dru Smith": {
+          "contract_status": "non_guaranteed"
+        }
+      }
+    },
+    "MIL": {
+      "players": {
+        "Cam Thomas": {
+          "contract_status": "ufa"
+        },
+        "Kevin Porter Jr.": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "MIN": {
+      "players": {
+        "Bones Hyland": {
+          "contract_status": "ufa"
+        },
+        "Mike Conley": {
+          "contract_status": "ufa"
+        },
+        "Ayo Dosunmu": {
+          "contract_status": "ufa"
+        },
+        "Julian Phillips": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "NOP": {
+      "players": {
+        "DeAndre Jordan": {
+          "contract_status": "ufa"
+        },
+        "Kevon Looney": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "NYK": {
+      "players": {
+        "Landry Shamet": {
+          "contract_status": "ufa"
+        },
+        "Jordan Clarkson": {
+          "contract_status": "ufa"
+        },
+        "Jose Alvarado": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "ORL": {
+      "players": {
+        "Jevon Carter": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "PHI": {
+      "players": {
+        "Cameron Payne": {
+          "contract_status": "ufa"
+        },
+        "Quentin Grimes": {
+          "contract_status": "ufa"
+        },
+        "Jabari Walker": {
+          "contract_status": "ufa"
+        },
+        "Andre Drummond": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "PHX": {
+      "players": {
+        "Jordan Goodwin": {
+          "contract_status": "ufa"
+        },
+        "Collin Gillespie": {
+          "contract_status": "ufa"
+        },
+        "Haywood Highsmith": {
+          "contract_status": "ufa"
+        },
+        "Ryan Dunn": {
+          "contract_status": "non_guaranteed"
+        },
+        "Oso Ighodaro": {
+          "contract_status": "non_guaranteed"
+        },
+        "Jamaree Bouyea": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "POR": {
+      "players": {
+        "Matisse Thybulle": {
+          "contract_status": "ufa"
+        },
+        "Blake Wesley": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "SAC": {
+      "players": {
+        "Russell Westbrook": {
+          "contract_status": "ufa"
+        },
+        "Precious Achiuwa": {
+          "contract_status": "ufa"
+        },
+        "Drew Eubanks": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "SAS": {
+      "players": {
+        "Jordan McLaughlin": {
+          "contract_status": "ufa"
+        },
+        "Kelly Olynyk": {
+          "contract_status": "ufa"
+        },
+        "Bismack Biyombo": {
+          "contract_status": "ufa"
+        },
+        "Mason Plumlee": {
+          "contract_status": "ufa"
+        },
+        "Julian Champagnie": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "TOR": {
+      "players": {
+        "Garrett Temple": {
+          "contract_status": "ufa"
+        },
+        "Jamal Shead": {
+          "contract_status": "team_option",
+          "option_decision": "pending"
+        }
+      }
+    },
+    "UTA": {
+      "players": {
+        "Kevin Love": {
+          "contract_status": "ufa"
+        }
+      }
+    },
+    "WAS": {
+      "players": {
+        "D'Angelo Russell": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        },
+        "Trae Young": {
+          "contract_status": "player_option",
+          "option_decision": "pending"
+        }
+      }
+    }
+  }
 }
