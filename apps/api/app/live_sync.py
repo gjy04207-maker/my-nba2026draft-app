@@ -52,6 +52,25 @@ def _normalize_roster_player(athlete: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _existing_player_lookup(roster_players: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    lookup: dict[str, dict[str, Any]] = {}
+    for player in roster_players:
+        for key in (player.get("id"), player.get("source_id"), player.get("name"), player.get("short_name")):
+            if key:
+                lookup[str(key)] = player
+    return lookup
+
+
+def _merge_contract_fields(player: dict[str, Any], existing_player: dict[str, Any] | None) -> dict[str, Any]:
+    if not existing_player:
+        return player
+    next_player = dict(player)
+    for field in ("contract_status", "option_decision", "contract_source"):
+        if existing_player.get(field) is not None:
+            next_player[field] = existing_player.get(field)
+    return next_player
+
+
 def _parse_record_summary(record_summary: str | None) -> tuple[int | None, int | None, float | None]:
     if not record_summary or "-" not in record_summary:
         return None, None, None
@@ -97,8 +116,17 @@ def _refresh_team(
     schedule_team = schedule_payload.get("team", {})
     roster_players = team.get("roster_players", [])
     if refresh_rosters:
+        existing_players = _existing_player_lookup(roster_players)
         roster_players = sorted(
-            (_normalize_roster_player(athlete) for athlete in roster_payload.get("athletes", [])),
+            (
+                _merge_contract_fields(
+                    _normalize_roster_player(athlete),
+                    existing_players.get(f"nba-{athlete.get('id')}")
+                    or existing_players.get(str(athlete.get("id", "")))
+                    or existing_players.get(athlete.get("displayName") or athlete.get("fullName") or ""),
+                )
+                for athlete in roster_payload.get("athletes", [])
+            ),
             key=lambda item: (item.get("position") or "Z", item.get("name") or ""),
         )
 

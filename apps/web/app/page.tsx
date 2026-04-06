@@ -7,6 +7,8 @@ const API_BASE =
   (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '');
 
 type DraftAssetType = 'roster_player' | 'drafted_rights';
+type ContractStatus = 'guaranteed' | 'ufa' | 'rfa' | 'non_guaranteed' | 'team_option' | 'player_option';
+type OptionDecision = 'pending' | 'exercised' | 'declined';
 type ControlMode = 'selected_teams_manual' | 'all_teams_manual' | 'full_auto';
 type TradeStatus = 'accepted' | 'rejected' | 'manual_review_required';
 type TradeAssetType = 'pick' | DraftAssetType;
@@ -25,6 +27,9 @@ type DraftAssetPlayer = {
   weight_lbs?: number | null;
   jersey?: string | null;
   origin_pick?: number | null;
+  contract_status?: ContractStatus | null;
+  option_decision?: OptionDecision | null;
+  contract_source?: string | null;
 };
 
 type Team = {
@@ -35,6 +40,10 @@ type Team = {
   primary_color?: string | null;
   secondary_color?: string | null;
   logo_url?: string | null;
+  record_summary?: string | null;
+  standing_summary?: string | null;
+  season_summary?: string | null;
+  last_synced_at?: string | null;
   roster_players: DraftAssetPlayer[];
 };
 
@@ -172,6 +181,7 @@ type TeamAssetBuckets = Record<
   string,
   {
     rosterPlayers: DraftAssetPlayer[];
+    contractBook: DraftAssetPlayer[];
     draftedRights: DraftAssetPlayer[];
   }
 >;
@@ -191,6 +201,19 @@ const CONTROL_MODE_LABELS: Record<ControlMode, string> = {
 
 const POSITION_FILTERS = ['ALL', 'G', 'F', 'C', 'G/F', 'F/C'];
 const MAX_TRADE_TEAMS = 5;
+const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
+  guaranteed: '保障合同',
+  ufa: '完全自由球员',
+  rfa: '受限制自由球员',
+  non_guaranteed: '非保障',
+  team_option: '球队选项',
+  player_option: '球员选项',
+};
+const OPTION_DECISION_LABELS: Record<OptionDecision, string> = {
+  pending: '待决定',
+  exercised: '执行',
+  declined: '拒绝',
+};
 const ORDER_SETUP_LABELS: Record<OrderSetupMode, string> = {
   default: '默认内置顺位',
   manual: '自主调整',
@@ -272,6 +295,41 @@ function formatTradeAssetLabel(asset: ResolvedTradeAsset) {
   return asset.label;
 }
 
+function formatContractStatus(status?: ContractStatus | null) {
+  return CONTRACT_STATUS_LABELS[status ?? 'guaranteed'];
+}
+
+function formatOptionDecision(decision?: OptionDecision | null) {
+  if (!decision) return '无需决策';
+  return OPTION_DECISION_LABELS[decision];
+}
+
+function isRosterEligiblePlayer(player: DraftAssetPlayer) {
+  const contractStatus = player.contract_status ?? 'guaranteed';
+  if (contractStatus === 'ufa') return false;
+  if ((contractStatus === 'team_option' || contractStatus === 'player_option') && player.option_decision === 'declined') {
+    return false;
+  }
+  return true;
+}
+
+function mergeContractState(player: DraftAssetPlayer, existingPlayer?: DraftAssetPlayer | null): DraftAssetPlayer {
+  const contractStatus = existingPlayer?.contract_status ?? player.contract_status ?? 'guaranteed';
+  let optionDecision = existingPlayer?.option_decision ?? player.option_decision ?? null;
+  if ((contractStatus === 'team_option' || contractStatus === 'player_option') && !optionDecision) {
+    optionDecision = 'pending';
+  }
+  if (contractStatus !== 'team_option' && contractStatus !== 'player_option') {
+    optionDecision = null;
+  }
+  return {
+    ...player,
+    contract_status: contractStatus,
+    option_decision: optionDecision,
+    contract_source: existingPlayer?.contract_source ?? player.contract_source ?? null,
+  };
+}
+
 function sortAssets<T extends DraftAssetPlayer>(assets: T[]) {
   return [...assets].sort((left, right) => {
     if ((left.origin_pick ?? 999) !== (right.origin_pick ?? 999)) {
@@ -281,14 +339,52 @@ function sortAssets<T extends DraftAssetPlayer>(assets: T[]) {
   });
 }
 
+function buildContractLookup(players: DraftAssetPlayer[]) {
+  const lookup = new Map<string, DraftAssetPlayer>();
+  players.forEach((player) => {
+    [player.id, player.source_id, player.name, player.short_name].forEach((key) => {
+      if (key) lookup.set(String(key), player);
+    });
+  });
+  return lookup;
+}
+
+function findMatchingContractPlayer(
+  lookup: Map<string, DraftAssetPlayer>,
+  player: DraftAssetPlayer
+) {
+  return (
+    lookup.get(player.id) ||
+    (player.source_id ? lookup.get(player.source_id) : undefined) ||
+    lookup.get(player.name) ||
+    (player.short_name ? lookup.get(player.short_name) : undefined)
+  );
+}
+
+function normalizeTeamAssetState(contractBook: DraftAssetPlayer[], draftedRights: DraftAssetPlayer[]) {
+  const nextContractBook = sortAssets(contractBook.map((player) => mergeContractState(player)));
+  return {
+    contractBook: nextContractBook,
+    rosterPlayers: sortAssets(nextContractBook.filter(isRosterEligiblePlayer)),
+    draftedRights: sortAssets(draftedRights),
+  };
+}
+
+function buildTeamAssetState(
+  rosterPlayers: DraftAssetPlayer[],
+  existingContractBook: DraftAssetPlayer[] = [],
+  draftedRights: DraftAssetPlayer[] = []
+) {
+  const existingLookup = buildContractLookup(existingContractBook);
+  const contractBook = rosterPlayers.map((player) => mergeContractState(player, findMatchingContractPlayer(existingLookup, player)));
+  return normalizeTeamAssetState(contractBook, draftedRights);
+}
+
 function buildInitialTeamAssets(teams: Team[]): TeamAssetBuckets {
   return Object.fromEntries(
     teams.map((team) => [
       team.id,
-      {
-        rosterPlayers: sortAssets(team.roster_players ?? []),
-        draftedRights: [],
-      },
+      buildTeamAssetState(team.roster_players ?? []),
     ])
   );
 }
@@ -395,6 +491,7 @@ function applySelectionToSession(session: DraftSession, player: DraftPlayer, pic
     ...session.teamAssets,
     [pick.current_team]: {
       rosterPlayers: session.teamAssets[pick.current_team]?.rosterPlayers ?? [],
+      contractBook: session.teamAssets[pick.current_team]?.contractBook ?? [],
       draftedRights: sortAssets([
         ...(session.teamAssets[pick.current_team]?.draftedRights ?? []),
         selection.asset,
@@ -417,6 +514,7 @@ function moveTradeAssets(session: DraftSession, participants: ResolvedTradeParti
         teamId,
         {
           rosterPlayers: [...teamAssets.rosterPlayers],
+          contractBook: [...teamAssets.contractBook],
           draftedRights: [...teamAssets.draftedRights],
         },
       ])
@@ -427,11 +525,16 @@ function moveTradeAssets(session: DraftSession, participants: ResolvedTradeParti
 
   const takeAsset = (teamId: string, assetId: string) => {
     const teamAssets = nextTeamAssets[teamId];
-    const rosterIndex = teamAssets.rosterPlayers.findIndex((asset) => asset.id === assetId);
-    if (rosterIndex >= 0) {
+    const contractIndex = teamAssets.contractBook.findIndex((asset) => asset.id === assetId);
+    if (contractIndex >= 0) {
+      const asset = teamAssets.contractBook.splice(contractIndex, 1)[0];
+      const rosterIndex = teamAssets.rosterPlayers.findIndex((item) => item.id === assetId);
+      if (rosterIndex >= 0) {
+        teamAssets.rosterPlayers.splice(rosterIndex, 1);
+      }
       return {
         assetType: 'rosterPlayers' as const,
-        asset: teamAssets.rosterPlayers.splice(rosterIndex, 1)[0],
+        asset,
       };
     }
 
@@ -452,9 +555,16 @@ function moveTradeAssets(session: DraftSession, participants: ResolvedTradeParti
       const moved = takeAsset(participant.teamId, asset.playerAsset.id);
       if (!moved) continue;
       if (!incomingAssets[asset.recipientTeamId]) {
-        incomingAssets[asset.recipientTeamId] = { rosterPlayers: [], draftedRights: [] };
+        incomingAssets[asset.recipientTeamId] = { rosterPlayers: [], contractBook: [], draftedRights: [] };
       }
-      incomingAssets[asset.recipientTeamId][moved.assetType].push(moved.asset);
+      if (moved.assetType === 'rosterPlayers') {
+        incomingAssets[asset.recipientTeamId].contractBook.push(moved.asset);
+        if (isRosterEligiblePlayer(moved.asset)) {
+          incomingAssets[asset.recipientTeamId].rosterPlayers.push(moved.asset);
+        }
+      } else {
+        incomingAssets[asset.recipientTeamId][moved.assetType].push(moved.asset);
+      }
     }
   }
 
@@ -463,6 +573,10 @@ function moveTradeAssets(session: DraftSession, participants: ResolvedTradeParti
       ...nextTeamAssets[teamId].rosterPlayers,
       ...assets.rosterPlayers,
     ]);
+    nextTeamAssets[teamId].contractBook = sortAssets([
+      ...nextTeamAssets[teamId].contractBook,
+      ...assets.contractBook,
+    ]);
     nextTeamAssets[teamId].draftedRights = sortAssets([
       ...nextTeamAssets[teamId].draftedRights,
       ...assets.draftedRights,
@@ -470,6 +584,27 @@ function moveTradeAssets(session: DraftSession, participants: ResolvedTradeParti
   }
 
   return nextTeamAssets;
+}
+
+function mergeSessionWithRefreshedMeta(session: DraftSession, teams: Team[]) {
+  const nextTeamAssets: TeamAssetBuckets = Object.fromEntries(
+    teams.map((team) => {
+      const existingAssets = session.teamAssets[team.id];
+      return [
+        team.id,
+        buildTeamAssetState(
+          team.roster_players ?? [],
+          existingAssets?.contractBook ?? [],
+          existingAssets?.draftedRights ?? []
+        ),
+      ];
+    })
+  );
+
+  return {
+    ...session,
+    teamAssets: nextTeamAssets,
+  };
 }
 
 export default function Page() {
@@ -497,11 +632,15 @@ export default function Page() {
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState('');
   const [tradeOpen, setTradeOpen] = useState(false);
+  const [contractsOpen, setContractsOpen] = useState(false);
   const [orderSetupOpen, setOrderSetupOpen] = useState(true);
   const [orderSetupMode, setOrderSetupMode] = useState<OrderSetupMode>('default');
   const [setupOriginalOrder, setSetupOriginalOrder] = useState<string[]>([]);
   const [orderSetupError, setOrderSetupError] = useState('');
   const [draggingTeamId, setDraggingTeamId] = useState<string | null>(null);
+  const [controlsExpanded, setControlsExpanded] = useState(false);
+  const [contractTeamId, setContractTeamId] = useState('');
+  const [rosterRefreshBusy, setRosterRefreshBusy] = useState(false);
 
   const teamsById = useMemo(() => {
     const map = new Map<string, Team>();
@@ -527,6 +666,7 @@ export default function Page() {
         setOrderSourceLabel(data.order_sources[0]?.label ?? '默认内置顺位');
         setRoundCount(data.rounds.includes(60) ? 60 : data.rounds[0] ?? 60);
         setSetupOriginalOrder(buildBaseOriginalOrder(data.draft_order ?? []));
+        setContractTeamId(data.teams[0]?.id ?? '');
         setOrderSetupOpen(true);
         setOrderSetupMode('default');
         setOrderSetupError('');
@@ -550,7 +690,7 @@ export default function Page() {
       setSelectedProspectId(null);
       setTradeOpen(false);
     });
-  }, [meta, draftOrder, roundCount]);
+  }, [draftOrder, roundCount]);
 
   useEffect(() => {
     if (!boardId) return;
@@ -622,6 +762,13 @@ export default function Page() {
     });
   }, [meta, remainingPicks, session]);
 
+  useEffect(() => {
+    if (draftOrderedTeams.length === 0) return;
+    if (!contractTeamId || !draftOrderedTeams.some((team) => team.id === contractTeamId)) {
+      setContractTeamId(draftOrderedTeams[0].id);
+    }
+  }, [draftOrderedTeams, contractTeamId]);
+
   const setupPreviewOrder = useMemo(() => {
     if (!meta || setupOriginalOrder.length === 0) return [];
     return buildDraftOrderFromOriginalOrder(meta.draft_order, setupOriginalOrder);
@@ -641,6 +788,30 @@ export default function Page() {
       .forEach((pick) => map.set(pick.original_team, pick.current_team));
     return map;
   }, [meta]);
+
+  const activeContractTeamId = contractTeamId || draftOrderedTeams[0]?.id || '';
+  const activeContractTeam = teamsById.get(activeContractTeamId);
+  const activeContractBook = useMemo(
+    () => (activeContractTeamId ? session?.teamAssets[activeContractTeamId]?.contractBook ?? [] : []),
+    [activeContractTeamId, session]
+  );
+  const contractStatusSummary = useMemo(() => {
+    return activeContractBook.reduce<Record<ContractStatus, number>>(
+      (summary, player) => {
+        const status = player.contract_status ?? 'guaranteed';
+        summary[status] += 1;
+        return summary;
+      },
+      {
+        guaranteed: 0,
+        ufa: 0,
+        rfa: 0,
+        non_guaranteed: 0,
+        team_option: 0,
+        player_option: 0,
+      }
+    );
+  }, [activeContractBook]);
 
   const activeTradeSlots = useMemo(() => tradeSlots.filter((slot) => slot.teamId), [tradeSlots]);
   const totalSelectedTradeAssets = useMemo(
@@ -854,6 +1025,74 @@ export default function Page() {
 
   function toggleControlledTeam(teamId: string) {
     setControlledTeams((prev) => (prev.includes(teamId) ? prev.filter((id) => id !== teamId) : [...prev, teamId]));
+  }
+
+  async function refreshLiveRosters() {
+    setRosterRefreshBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/draft/refresh-rosters`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error('refresh-rosters');
+      const data = (await res.json()) as DraftMeta;
+      startTransition(() => {
+        setMeta(data);
+        setSession((prev) => (prev ? mergeSessionWithRefreshedMeta(prev, data.teams) : prev));
+        setStatusMessage('已刷新当前各队阵容与战绩。');
+      });
+    } catch {
+      setStatusMessage('刷新阵容失败，请稍后重试。');
+    } finally {
+      setRosterRefreshBusy(false);
+    }
+  }
+
+  function updateContractBook(
+    teamId: string,
+    updater: (players: DraftAssetPlayer[]) => DraftAssetPlayer[]
+  ) {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const currentAssets = prev.teamAssets[teamId];
+      if (!currentAssets) return prev;
+      return {
+        ...prev,
+        teamAssets: {
+          ...prev.teamAssets,
+          [teamId]: normalizeTeamAssetState(updater(currentAssets.contractBook), currentAssets.draftedRights),
+        },
+      };
+    });
+  }
+
+  function setPlayerContractStatus(teamId: string, playerId: string, nextStatus: ContractStatus) {
+    updateContractBook(teamId, (players) =>
+      players.map((player) => {
+        if (player.id !== playerId) return player;
+        const nextDecision =
+          nextStatus === 'team_option' || nextStatus === 'player_option'
+            ? player.option_decision ?? 'pending'
+            : null;
+        return {
+          ...player,
+          contract_status: nextStatus,
+          option_decision: nextDecision,
+        };
+      })
+    );
+  }
+
+  function setPlayerOptionDecision(teamId: string, playerId: string, nextDecision: OptionDecision) {
+    updateContractBook(teamId, (players) =>
+      players.map((player) =>
+        player.id === playerId
+          ? {
+              ...player,
+              option_decision: nextDecision,
+            }
+          : player
+      )
+    );
   }
 
   function updateTradeSlot(
@@ -1105,8 +1344,8 @@ export default function Page() {
         </div>
       </header>
 
-      <section className="control-hub">
-        <div className="control-hub-head">
+      <section className={controlsExpanded ? 'control-hub compact expanded' : 'control-hub compact'}>
+        <div className="control-hub-head compact">
           <div>
             <div className="eyebrow">Command Deck</div>
             <h2>模拟控制台</h2>
@@ -1115,10 +1354,10 @@ export default function Page() {
             {session ? `${Object.keys(session.selections).length}/${session.order.length} 已完成` : '等待顺位确认'}
           </div>
         </div>
-        <div className="control-hub-grid">
-          <div className="hub-panel">
+        <div className="control-hub-main">
+          <div className="control-cluster">
             <div className="rail-label">模拟范围</div>
-            <div className="pill-row">
+            <div className="pill-row compact">
               {(meta?.rounds ?? []).map((round) => (
                 <button
                   key={round}
@@ -1131,9 +1370,9 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="hub-panel">
+          <div className="control-cluster">
             <div className="rail-label">控制模式</div>
-            <div className="pill-row">
+            <div className="pill-row compact">
               {(Object.keys(CONTROL_MODE_LABELS) as ControlMode[]).map((mode) => (
                 <button
                   key={mode}
@@ -1146,13 +1385,50 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="hub-panel hub-panel-manual">
-            <div className="hub-copy">
-              <div className="rail-label">手动球队</div>
-              <strong>
-                {controlMode === 'selected_teams_manual' ? `已选择 ${controlledTeams.length} 支球队` : '该模块仅在选中球队手动模式下生效'}
-              </strong>
-              <span>轮到这些球队时，模拟会暂停，等待你手动提交这一签。</span>
+          <div className="control-cluster control-cluster-summary">
+            <div className="rail-label">手动球队</div>
+            <strong>
+              {controlMode === 'selected_teams_manual' ? `${controlledTeams.length} 支已选` : '未启用'}
+            </strong>
+            <span>
+              {manualRequired && currentPick
+                ? `${teamsById.get(currentPick.current_team)?.abbr ?? currentPick.current_team} 当前需要手动选择`
+                : '选秀时只保留最核心的开关，手动球队放到可展开区域。'}
+            </span>
+          </div>
+
+          <div className="control-actions-strip">
+            <label className="toggle compact">
+              <input type="checkbox" checked={useNeeds} onChange={(event) => setUseNeeds(event.target.checked)} />
+              <span>按球队需求加权</span>
+            </label>
+            <button className="action muted" onClick={refreshLiveRosters} disabled={rosterRefreshBusy}>
+              {rosterRefreshBusy ? '阵容刷新中…' : '一键刷新阵容'}
+            </button>
+            <button className="action muted" onClick={() => setContractsOpen(true)} disabled={!session}>
+              阵容 / 合同
+            </button>
+            <button className="action muted" onClick={autoPickNext} disabled={autoBusy || manualRequired || draftFinished}>
+              自动下一签
+            </button>
+            <button className="action" onClick={autoAdvance} disabled={autoBusy || draftFinished}>
+              自动推进
+            </button>
+            <button
+              className="action muted"
+              onClick={() => setControlsExpanded((prev) => !prev)}
+              disabled={controlMode !== 'selected_teams_manual'}
+            >
+              {controlsExpanded ? '收起手动球队' : '手动球队设置'}
+            </button>
+          </div>
+        </div>
+
+        {controlMode === 'selected_teams_manual' ? (
+          <div className={controlsExpanded ? 'control-hub-detail open' : 'control-hub-detail'}>
+            <div className="control-detail-copy">
+              <strong>手动球队</strong>
+              <span>轮到这些球队时模拟会暂停。你不需要反复回到顶部看说明，只在这里快速勾选球队即可。</span>
             </div>
             <div className="team-pill-tray">
               {draftOrderedTeams.map((team) => (
@@ -1167,29 +1443,7 @@ export default function Page() {
               ))}
             </div>
           </div>
-
-          <div className="hub-panel">
-            <div className="hub-copy">
-              <div className="rail-label">自动选秀</div>
-              <strong>{manualRequired ? '当前顺位需要你手动处理' : '可以继续自动推进'}</strong>
-              <span>自动选秀会沿用附件 Big Board，并可按球队需求进行位置加权。</span>
-            </div>
-            <div className="auto-actions">
-              <label className="toggle">
-                <input type="checkbox" checked={useNeeds} onChange={(event) => setUseNeeds(event.target.checked)} />
-                <span>按球队需求加权</span>
-              </label>
-              <div className="button-row">
-                <button className="action muted" onClick={autoPickNext} disabled={autoBusy || manualRequired || draftFinished}>
-                  自动下一签
-                </button>
-                <button className="action" onClick={autoAdvance} disabled={autoBusy || draftFinished}>
-                  自动推进
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        ) : null}
       </section>
 
       {statusMessage ? <div className="status-banner">{statusMessage}</div> : null}
@@ -1450,6 +1704,156 @@ export default function Page() {
           </div>
         </section>
       </main>
+
+      {contractsOpen ? (
+        <div className="contracts-shell" onClick={() => setContractsOpen(false)}>
+          <section className="contracts-overlay" onClick={(event) => event.stopPropagation()}>
+            <div className="contracts-overlay-head">
+              <div>
+                <div className="eyebrow">Roster And Contracts</div>
+                <h2>阵容 / 合同簿</h2>
+                <p>这一版先用本地休赛期合同快照维护 UFA、RFA、非保障、球队选项和球员选项；刷新阵容时会尽量保留你已经做过的合同决定。</p>
+              </div>
+              <div className="button-row">
+                <button className="action muted" onClick={refreshLiveRosters} disabled={rosterRefreshBusy}>
+                  {rosterRefreshBusy ? '阵容刷新中…' : '一键刷新阵容'}
+                </button>
+                <button className="action muted" onClick={() => setContractsOpen(false)}>
+                  关闭
+                </button>
+              </div>
+            </div>
+
+            <div className="contracts-toolbar">
+              <label className="contracts-team-select">
+                <span>按当前顺位切换球队</span>
+                <select value={activeContractTeamId} onChange={(event) => setContractTeamId(event.target.value)}>
+                  {draftOrderedTeams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="contracts-toolbar-copy">
+                <strong>{activeContractTeam?.name ?? '—'}</strong>
+                <span>
+                  {activeContractTeam?.record_summary ?? '暂无战绩'}
+                  {activeContractTeam?.standing_summary ? ` · ${activeContractTeam.standing_summary}` : ''}
+                  {activeContractTeam?.season_summary ? ` · ${activeContractTeam.season_summary}` : ''}
+                </span>
+              </div>
+            </div>
+
+            <div className="contracts-summary-grid">
+              <div className="contract-summary-card">
+                <span>当前球队</span>
+                <strong>{activeContractTeam?.abbr ?? '—'}</strong>
+                <small>{activeContractTeam?.name ?? '未选择球队'}</small>
+              </div>
+              <div className="contract-summary-card">
+                <span>可交易阵容</span>
+                <strong>{activeContractTeamId ? session?.teamAssets[activeContractTeamId]?.rosterPlayers.length ?? 0 : 0}</strong>
+                <small>会随合同状态和选项决定即时变化</small>
+              </div>
+              <div className="contract-summary-card">
+                <span>自由球员情况</span>
+                <strong>
+                  {contractStatusSummary.ufa} UFA / {contractStatusSummary.rfa} RFA
+                </strong>
+                <small>{contractStatusSummary.non_guaranteed} 份非保障合同</small>
+              </div>
+              <div className="contract-summary-card">
+                <span>待决定选项</span>
+                <strong>
+                  {
+                    activeContractBook.filter(
+                      (player) =>
+                        (player.contract_status === 'team_option' || player.contract_status === 'player_option') &&
+                        player.option_decision === 'pending'
+                    ).length
+                  }
+                </strong>
+                <small>
+                  {contractStatusSummary.team_option} 球队选项 / {contractStatusSummary.player_option} 球员选项
+                </small>
+              </div>
+            </div>
+
+            <div className="contracts-list">
+              {activeContractBook.length > 0 ? (
+                activeContractBook.map((player) => {
+                  const contractStatus = player.contract_status ?? 'guaranteed';
+                  const requiresOptionDecision =
+                    contractStatus === 'team_option' || contractStatus === 'player_option';
+                  return (
+                    <div key={player.id} className="contract-row">
+                      <div className="contract-player-copy">
+                        <strong>{player.name}</strong>
+                        <span>
+                          {[player.position_label ?? player.position, player.short_name, player.jersey ? `#${player.jersey}` : null]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      </div>
+                      <div className="contract-status-pill">
+                        <strong>{formatContractStatus(contractStatus)}</strong>
+                        <span>{requiresOptionDecision ? formatOptionDecision(player.option_decision) : '无需决策'}</span>
+                      </div>
+                      <div className="contract-controls">
+                        <label>
+                          <span>合同状态</span>
+                          <select
+                            value={contractStatus}
+                            onChange={(event) =>
+                              setPlayerContractStatus(
+                                activeContractTeamId,
+                                player.id,
+                                event.target.value as ContractStatus
+                              )
+                            }
+                          >
+                            {(Object.keys(CONTRACT_STATUS_LABELS) as ContractStatus[]).map((status) => (
+                              <option key={status} value={status}>
+                                {CONTRACT_STATUS_LABELS[status]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {requiresOptionDecision ? (
+                          <label>
+                            <span>{contractStatus === 'team_option' ? '球队选项' : '球员选项'}</span>
+                            <select
+                              value={player.option_decision ?? 'pending'}
+                              onChange={(event) =>
+                                setPlayerOptionDecision(
+                                  activeContractTeamId,
+                                  player.id,
+                                  event.target.value as OptionDecision
+                                )
+                              }
+                            >
+                              {(Object.keys(OPTION_DECISION_LABELS) as OptionDecision[]).map((decision) => (
+                                <option key={decision} value={decision}>
+                                  {OPTION_DECISION_LABELS[decision]}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : (
+                          <div className="contract-option-placeholder">该状态无需额外决定</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="empty-block">当前球队没有可编辑的阵容球员。</div>
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {tradeOpen ? (
         <div className="trade-shell" onClick={() => setTradeOpen(false)}>

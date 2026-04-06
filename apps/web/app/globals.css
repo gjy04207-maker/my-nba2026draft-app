@@ -174,11 +174,20 @@ button {
   gap: 16px;
 }
 
+.control-hub.compact {
+  padding: 16px 18px;
+  gap: 14px;
+}
+
 .control-hub-head {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   align-items: flex-end;
+}
+
+.control-hub-head.compact {
+  align-items: center;
 }
 
 .control-hub-head h2,
@@ -193,6 +202,78 @@ button {
 .control-hub-head h2 {
   font-size: 30px;
   line-height: 0.95;
+}
+
+.control-hub-main {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(220px, 0.72fr) minmax(0, 1.55fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.control-cluster,
+.control-cluster-summary,
+.control-actions-strip,
+.control-hub-detail {
+  padding: 14px 15px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(19, 33, 58, 0.08);
+}
+
+.control-cluster,
+.control-cluster-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.control-cluster-summary strong {
+  font-size: 20px;
+  color: var(--navy);
+}
+
+.control-cluster-summary span,
+.control-detail-copy span,
+.contracts-toolbar-copy span,
+.contract-summary-card small,
+.contract-player-copy span,
+.contract-status-pill span,
+.contract-option-placeholder {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.control-actions-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  align-content: flex-start;
+}
+
+.toggle.compact {
+  min-height: 42px;
+  padding: 0 2px;
+}
+
+.control-hub-detail {
+  display: none;
+  gap: 14px;
+}
+
+.control-hub-detail.open {
+  display: grid;
+}
+
+.control-detail-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.control-detail-copy strong {
+  font-size: 16px;
+  color: var(--navy);
 }
 
 .setup-head h2 {
@@ -423,7 +504,9 @@ button {
 .standing-card span,
 .setup-preview-card small,
 .trade-ledger-card span,
-.trade-ledger-card small {
+.trade-ledger-card small,
+.contract-summary-card span,
+.contract-status-pill span {
   font-size: 11px;
   color: var(--ink-faint);
   font-family: var(--font-mono, "Space Mono", monospace);
@@ -825,7 +908,9 @@ button {
 }
 
 .board-toolbar input,
-.trade-selectors select {
+.trade-selectors select,
+.contracts-team-select select,
+.contract-controls select {
   width: 100%;
   padding: 13px 14px;
   border-radius: 14px;
@@ -1032,6 +1117,30 @@ button {
   gap: 18px;
 }
 
+.contracts-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  background: rgba(15, 18, 27, 0.42);
+  backdrop-filter: blur(12px);
+  padding: 24px;
+  display: grid;
+  place-items: center;
+}
+
+.contracts-overlay {
+  width: min(1240px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border-radius: 28px;
+  border: 1px solid rgba(19, 33, 58, 0.1);
+  background: linear-gradient(180deg, rgba(255, 252, 245, 0.98), rgba(249, 240, 225, 0.98));
+  box-shadow: 0 26px 60px rgba(15, 18, 27, 0.28);
+  padding: 22px;
+  display: grid;
+  gap: 18px;
+}
+
 .trade-overlay-head {
   display: flex;
   justify-content: space-between;
@@ -1054,6 +1163,140 @@ button {
   font-size: 14px;
   line-height: 1.6;
   color: var(--ink-soft);
+}
+
+.contracts-overlay-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.contracts-overlay-head h2 {
+  margin: 4px 0 8px;
+  font-family: var(--font-display, "Bebas Neue", sans-serif);
+  font-size: 36px;
+  line-height: 0.94;
+  letter-spacing: 0.05em;
+  color: var(--navy);
+}
+
+.contracts-overlay-head p {
+  margin: 0;
+  max-width: 760px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.contracts-toolbar,
+.contracts-summary-grid,
+.contracts-list,
+.contract-player-copy,
+.contract-controls {
+  display: grid;
+}
+
+.contracts-toolbar {
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.contracts-team-select,
+.contract-controls label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.contracts-toolbar-copy {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(19, 33, 58, 0.05);
+  border: 1px solid rgba(19, 33, 58, 0.08);
+  display: grid;
+  gap: 6px;
+}
+
+.contracts-toolbar-copy strong,
+.contract-summary-card strong,
+.contract-player-copy strong,
+.contract-status-pill strong {
+  color: var(--navy);
+}
+
+.contracts-toolbar-copy strong {
+  font-size: 18px;
+}
+
+.contracts-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.contract-summary-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(19, 33, 58, 0.05);
+  border: 1px solid rgba(19, 33, 58, 0.08);
+  display: grid;
+  gap: 7px;
+}
+
+.contract-summary-card strong {
+  font-size: 24px;
+  font-family: var(--font-display, "Bebas Neue", sans-serif);
+  letter-spacing: 0.04em;
+}
+
+.contracts-list {
+  gap: 12px;
+}
+
+.contract-row {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: white;
+  border: 1px solid rgba(19, 33, 58, 0.08);
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(180px, 0.65fr) minmax(320px, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.contract-player-copy {
+  gap: 5px;
+}
+
+.contract-player-copy strong {
+  font-size: 16px;
+}
+
+.contract-status-pill {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(19, 33, 58, 0.05);
+  border: 1px solid rgba(19, 33, 58, 0.08);
+  display: grid;
+  gap: 6px;
+}
+
+.contract-controls {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.contract-option-placeholder {
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(19, 33, 58, 0.05);
+  border: 1px dashed rgba(19, 33, 58, 0.12);
+  display: grid;
+  place-items: center;
 }
 
 .trade-toolbar {
@@ -1425,7 +1668,7 @@ button {
     grid-template-columns: 1fr 1.2fr;
   }
 
-  .control-hub-grid {
+  .control-hub-main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1438,6 +1681,14 @@ button {
     width: 100%;
     max-height: none;
     margin-top: 18px;
+  }
+
+  .contracts-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contract-row {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1459,7 +1710,8 @@ button {
   .setup-head,
   .setup-footer,
   .setup-inline-actions,
-  .manual-team-card {
+  .manual-team-card,
+  .contracts-overlay-head {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1490,7 +1742,6 @@ button {
   }
 
   .setup-mode-grid,
-  .control-hub-grid,
   .standings-grid,
   .trade-ledger {
     grid-template-columns: 1fr;
@@ -1498,6 +1749,13 @@ button {
 
   .manual-team-card,
   .setup-preview-card {
+    grid-template-columns: 1fr;
+  }
+
+  .control-hub-main,
+  .contracts-toolbar,
+  .contracts-summary-grid,
+  .contract-controls {
     grid-template-columns: 1fr;
   }
 }
@@ -1540,6 +1798,16 @@ button {
   }
 
   .trade-overlay {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    padding: 18px;
+  }
+
+  .contracts-shell {
+    padding: 12px;
+  }
+
+  .contracts-overlay {
     width: calc(100vw - 24px);
     max-height: calc(100vh - 24px);
     padding: 18px;

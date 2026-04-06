@@ -111,6 +111,9 @@ class DraftRosterPlayer(BaseModel):
     height: Optional[str] = None
     weight_lbs: Optional[Union[float, int]] = None
     jersey: Optional[str] = None
+    contract_status: Optional[str] = None
+    option_decision: Optional[str] = None
+    contract_source: Optional[str] = None
 
 
 class DraftTeam(BaseModel):
@@ -126,6 +129,10 @@ class DraftTeam(BaseModel):
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
     logo_url: Optional[str] = None
+    record_summary: Optional[str] = None
+    standing_summary: Optional[str] = None
+    season_summary: Optional[str] = None
+    last_synced_at: Optional[str] = None
     roster_players: List[DraftRosterPlayer] = Field(default_factory=list)
 
 
@@ -818,6 +825,19 @@ def _runtime_status_payload(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _build_meta_response(data: dict[str, Any]) -> DraftMetaResponse:
+    return DraftMetaResponse(
+        rounds=[14, 30, 60],
+        order_sources=[DraftOrderSource(**s) for s in data.get("order_sources", [])],
+        boards=[DraftBoard(**b) for b in data.get("boards", [])],
+        teams=[DraftTeam(**t) for t in data.get("teams", [])],
+        draft_order=[DraftPick(**p) for p in data.get("draft_order", [])],
+        updated_at=data.get("updated_at", ""),
+        pick_value_source=data.get("pick_value_source", "nbasense (参考)"),
+        pick_value_tolerance=int(data.get("pick_value_tolerance", 100)),
+    )
+
+
 def _build_default_original_team_order(draft_order: list[dict]) -> list[str]:
     first_round = [pick for pick in draft_order if int(pick.get("round", 0)) == 1]
     first_round.sort(key=lambda item: int(item.get("pick", 999)))
@@ -1077,16 +1097,20 @@ def draft_runtime_status():
 @app.get("/api/draft/meta", response_model=DraftMetaResponse)
 def draft_meta():
     data = _get_draft_data()
-    return DraftMetaResponse(
-        rounds=[14, 30, 60],
-        order_sources=[DraftOrderSource(**s) for s in data.get("order_sources", [])],
-        boards=[DraftBoard(**b) for b in data.get("boards", [])],
-        teams=[DraftTeam(**t) for t in data.get("teams", [])],
-        draft_order=[DraftPick(**p) for p in data.get("draft_order", [])],
-        updated_at=data.get("updated_at", ""),
-        pick_value_source=data.get("pick_value_source", "nbasense (参考)"),
-        pick_value_tolerance=int(data.get("pick_value_tolerance", 100)),
-    )
+    return _build_meta_response(data)
+
+
+@app.post("/api/draft/refresh-rosters", response_model=DraftMetaResponse)
+def draft_refresh_rosters():
+    base_data = _get_draft_data(force_refresh=True)
+    refreshed = live_sync.refresh_runtime_data(base_data, refresh_rosters=True, refresh_records=True)
+    try:
+        _save_runtime_payload(refreshed, source="public_refresh_rosters")
+        draft_data.reset_cache()
+        refreshed = _get_draft_data(force_refresh=True)
+    except HTTPException:
+        pass
+    return _build_meta_response(refreshed)
 
 
 @app.get("/api/draft/players", response_model=DraftPlayersResponse)

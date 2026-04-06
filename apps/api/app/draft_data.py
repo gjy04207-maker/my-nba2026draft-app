@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import time
 from pathlib import Path
@@ -10,6 +11,7 @@ from . import runtime_state
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA_DIR = ROOT / "data" / "draft"
+CONTRACT_SNAPSHOT_PATH = DATA_DIR / "contracts_snapshot_2026.json"
 
 CACHE_TTL_SECONDS = 300
 _CACHE: dict = {"ts": 0.0, "data": None}
@@ -178,6 +180,98 @@ def _build_pick_values(total_picks: int = 60) -> Dict[int, int]:
     return values
 
 
+def _contract_snapshot_path() -> Path:
+    raw_path = os.getenv("DRAFT_CONTRACT_SNAPSHOT_PATH", "").strip()
+    if raw_path:
+        return Path(raw_path).expanduser().resolve()
+    return CONTRACT_SNAPSHOT_PATH
+
+
+def _load_contract_snapshot() -> dict:
+    payload = _load_json(_contract_snapshot_path())
+    if isinstance(payload, dict):
+        return payload
+    return {
+        "updated_at": _iso_now(),
+        "source": "local_contract_snapshot",
+        "default_status": "guaranteed",
+        "teams": {},
+    }
+
+
+def _candidate_contract_keys(player: dict) -> list[str]:
+    keys: list[str] = []
+    for value in (player.get("id"), player.get("source_id"), player.get("name"), player.get("short_name")):
+        if value:
+            keys.append(str(value))
+    return keys
+
+
+def _resolve_contract_override(player: dict, team_config: dict) -> dict:
+    players = team_config.get("players", {})
+    if not isinstance(players, dict):
+        return {}
+    for key in _candidate_contract_keys(player):
+        override = players.get(key)
+        if isinstance(override, dict):
+            return override
+    return {}
+
+
+def _apply_contract_snapshot(payload: dict) -> dict:
+    snapshot = _load_contract_snapshot()
+    snapshot_source = snapshot.get("source") or "local_contract_snapshot"
+    default_status = snapshot.get("default_status") or "guaranteed"
+    snapshot_teams = snapshot.get("teams", {})
+    if not isinstance(snapshot_teams, dict):
+        snapshot_teams = {}
+
+    next_teams: list[dict] = []
+    for team in payload.get("teams", []):
+        team_config = snapshot_teams.get(team.get("id"), {})
+        if not isinstance(team_config, dict):
+            team_config = {}
+        team_default_status = team_config.get("default_status") or default_status
+        next_roster_players = []
+        for player in team.get("roster_players", []):
+            override = _resolve_contract_override(player, team_config)
+            contract_status = (
+                override.get("contract_status")
+                or player.get("contract_status")
+                or team_default_status
+                or "guaranteed"
+            )
+            option_decision = override.get("option_decision") or player.get("option_decision")
+            if contract_status in {"team_option", "player_option"} and not option_decision:
+                option_decision = "pending"
+            if contract_status not in {"team_option", "player_option"}:
+                option_decision = None
+
+            next_roster_players.append(
+                {
+                    **player,
+                    "contract_status": contract_status,
+                    "option_decision": option_decision,
+                    "contract_source": override.get("contract_source")
+                    or team_config.get("source")
+                    or player.get("contract_source")
+                    or snapshot_source,
+                }
+            )
+
+        next_teams.append(
+            {
+                **team,
+                "roster_players": next_roster_players,
+            }
+        )
+
+    return {
+        **payload,
+        "teams": next_teams,
+    }
+
+
 def _default_data() -> dict:
     teams = _default_teams()
     players = _default_players()
@@ -205,7 +299,7 @@ def get_repository_draft_data() -> dict:
     payload = _load_json(DATA_DIR / "draft_data.json")
     if not payload:
         payload = _default_data()
-    return payload
+    return _apply_contract_snapshot(payload)
 
 
 def _is_usable_runtime_payload(payload: object) -> bool:
@@ -231,6 +325,8 @@ def get_draft_data(force_refresh: bool = False) -> dict:
 
     if not _is_usable_runtime_payload(payload):
         payload = get_repository_draft_data()
+
+    payload = _apply_contract_snapshot(payload)
 
     _CACHE["data"] = payload
     _CACHE["ts"] = now

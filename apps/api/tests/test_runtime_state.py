@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
@@ -89,6 +90,62 @@ class RuntimeStateStorageTests(unittest.TestCase):
             summary = runtime_state.describe_runtime_state()
         self.assertEqual(summary["has_persisted_state"], False)
         self.assertEqual(summary["runtime_error"], "Unexpected runtime state type: str")
+
+    def test_contract_snapshot_applies_default_status(self) -> None:
+        repository_payload = draft_data.get_repository_draft_data()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            snapshot_path = os.path.join(temp_dir, "contracts.json")
+            with open(snapshot_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "updated_at": "2026-04-06T00:00:00Z",
+                        "source": "test_contract_snapshot",
+                        "default_status": "guaranteed",
+                        "teams": {},
+                    },
+                    handle,
+                    ensure_ascii=False,
+                )
+            with patch.dict(os.environ, {"DRAFT_CONTRACT_SNAPSHOT_PATH": snapshot_path}, clear=False):
+                draft_data.reset_cache()
+                loaded = draft_data.get_draft_data(force_refresh=True)
+        first_player = loaded["teams"][0]["roster_players"][0]
+        self.assertEqual(first_player["contract_status"], "guaranteed")
+        self.assertEqual(first_player["contract_source"], "test_contract_snapshot")
+        self.assertEqual(len(loaded["players"]), len(repository_payload["players"]))
+
+    def test_contract_snapshot_override_matches_player_id(self) -> None:
+        repository_payload = draft_data.get_repository_draft_data()
+        first_team = repository_payload["teams"][0]
+        first_player = first_team["roster_players"][0]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            snapshot_path = os.path.join(temp_dir, "contracts.json")
+            with open(snapshot_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {
+                        "updated_at": "2026-04-06T00:00:00Z",
+                        "source": "test_contract_snapshot",
+                        "default_status": "guaranteed",
+                        "teams": {
+                            first_team["id"]: {
+                                "players": {
+                                    first_player["id"]: {
+                                        "contract_status": "team_option",
+                                        "option_decision": "pending",
+                                    }
+                                }
+                            }
+                        },
+                    },
+                    handle,
+                    ensure_ascii=False,
+                )
+            with patch.dict(os.environ, {"DRAFT_CONTRACT_SNAPSHOT_PATH": snapshot_path}, clear=False):
+                draft_data.reset_cache()
+                loaded = draft_data.get_draft_data(force_refresh=True)
+        loaded_player = loaded["teams"][0]["roster_players"][0]
+        self.assertEqual(loaded_player["contract_status"], "team_option")
+        self.assertEqual(loaded_player["option_decision"], "pending")
 
 
 class LiveSyncHelpersTests(unittest.TestCase):
