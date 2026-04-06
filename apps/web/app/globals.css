@@ -62,8 +62,8 @@ button {
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 24px;
-  padding: 20px 24px;
+  gap: 16px;
+  padding: 16px 20px;
   background: linear-gradient(135deg, rgba(255, 251, 243, 0.96), rgba(247, 237, 220, 0.96));
   border: 1px solid var(--line);
   border-radius: 28px;
@@ -72,8 +72,8 @@ button {
 
 .brand-block {
   display: grid;
-  gap: 8px;
-  max-width: 720px;
+  gap: 6px;
+  max-width: 620px;
 }
 
 .brand-kicker,
@@ -88,7 +88,7 @@ button {
 
 .brand-block h1 {
   margin: 0;
-  font-size: clamp(30px, 4vw, 48px);
+  font-size: clamp(26px, 3.4vw, 42px);
   line-height: 0.92;
   font-family: var(--font-display, "Bebas Neue", sans-serif);
   letter-spacing: 0.03em;
@@ -97,36 +97,36 @@ button {
 
 .brand-block p {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--ink-soft);
-  max-width: 640px;
+  max-width: 560px;
 }
 
 .status-strip {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-start;
-  flex: 1 1 320px;
+  flex: 1 1 280px;
 }
 
 .header-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
 }
 
 .status-chip {
-  min-width: 150px;
-  padding: 12px 14px;
+  min-width: 132px;
+  padding: 10px 12px;
   border-radius: 16px;
   background: rgba(19, 33, 58, 0.05);
   border: 1px solid rgba(19, 33, 58, 0.08);
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .status-chip span,
@@ -175,8 +175,8 @@ button {
 }
 
 .control-hub.compact {
-  padding: 16px 18px;
-  gap: 14px;
+  padding: 12px 16px;
+  gap: 10px;
 }
 
 .control-hub-head {
@@ -200,35 +200,35 @@ button {
 }
 
 .control-hub-head h2 {
-  font-size: 30px;
+  font-size: 24px;
   line-height: 0.95;
 }
 
 .control-hub-main {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(220px, 0.72fr) minmax(0, 1.55fr);
-  gap: 12px;
-  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: center;
 }
 
 .control-cluster,
 .control-cluster-summary,
-.control-actions-strip,
-.control-hub-detail {
-  padding: 14px 15px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.56);
-  border: 1px solid rgba(19, 33, 58, 0.08);
+.control-actions-strip {
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .control-cluster,
 .control-cluster-summary {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
 }
 
 .control-cluster-summary strong {
-  font-size: 20px;
+  font-size: 16px;
   color: var(--navy);
 }
 
@@ -247,17 +247,22 @@ button {
 .control-actions-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  align-content: flex-start;
+  align-content: center;
+  margin-left: auto;
 }
 
 .toggle.compact {
-  min-height: 42px;
-  padding: 0 2px;
+  min-height: 38px;
+  padding: 0;
 }
 
 .control-hub-detail {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(19, 33, 58, 0.08);
   display: none;
   gap: 14px;
 }
@@ -272,8 +277,13 @@ button {
 }
 
 .control-detail-copy strong {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--navy);
+}
+
+.control-actions-strip .action {
+  padding: 9px 14px;
+  box-shadow: none;
 }
 
 .setup-head h2 {
@@ -1669,7 +1679,7 @@ button {
   }
 
   .control-hub-main {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
   }
 
   .setup-content {
@@ -1757,6 +1767,14 @@ button {
   .contracts-summary-grid,
   .contract-controls {
     grid-template-columns: 1fr;
+  }
+
+  .control-hub-main,
+  .control-cluster,
+  .control-cluster-summary,
+  .control-actions-strip {
+    display: grid;
+    margin-left: 0;
   }
 }
 

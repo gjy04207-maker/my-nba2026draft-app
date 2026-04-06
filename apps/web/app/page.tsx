@@ -1392,8 +1392,8 @@ export default function Page() {
             </strong>
             <span>
               {manualRequired && currentPick
-                ? `${teamsById.get(currentPick.current_team)?.abbr ?? currentPick.current_team} 当前需要手动选择`
-                : '选秀时只保留最核心的开关，手动球队放到可展开区域。'}
+                ? `${teamsById.get(currentPick.current_team)?.abbr ?? currentPick.current_team} 当前暂停`
+                : '这里只保留核心开关，球队列表按需展开。'}
             </span>
           </div>
 
@@ -1428,7 +1428,7 @@ export default function Page() {
           <div className={controlsExpanded ? 'control-hub-detail open' : 'control-hub-detail'}>
             <div className="control-detail-copy">
               <strong>手动球队</strong>
-              <span>轮到这些球队时模拟会暂停。你不需要反复回到顶部看说明，只在这里快速勾选球队即可。</span>
+              <span>轮到这些球队时暂停，直接在这里勾选即可。</span>
             </div>
             <div className="team-pill-tray">
               {draftOrderedTeams.map((team) => (
