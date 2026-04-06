@@ -76,6 +76,20 @@ class RuntimeStateStorageTests(unittest.TestCase):
         self.assertEqual(summary["has_persisted_state"], False)
         self.assertEqual(summary["runtime_error"], "db down")
 
+    def test_draft_data_falls_back_when_runtime_payload_shape_is_invalid(self) -> None:
+        repository_payload = draft_data.get_repository_draft_data()
+        with patch("apps.api.app.runtime_state.load_runtime_state", return_value={"foo": "bar"}):
+            draft_data.reset_cache()
+            loaded = draft_data.get_draft_data(force_refresh=True)
+        self.assertEqual(loaded["updated_at"], repository_payload["updated_at"])
+        self.assertEqual(len(loaded["teams"]), len(repository_payload["teams"]))
+
+    def test_describe_runtime_state_reports_invalid_payload_type(self) -> None:
+        with patch("apps.api.app.runtime_state.load_runtime_state", return_value="broken"):
+            summary = runtime_state.describe_runtime_state()
+        self.assertEqual(summary["has_persisted_state"], False)
+        self.assertEqual(summary["runtime_error"], "Unexpected runtime state type: str")
+
 
 class LiveSyncHelpersTests(unittest.TestCase):
     def test_parse_record_summary(self) -> None:

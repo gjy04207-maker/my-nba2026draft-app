@@ -132,6 +132,9 @@ def describe_runtime_state() -> dict[str, Any]:
     except Exception as exc:  # pragma: no cover - defensive status reporting
         state = None
         runtime_error = str(exc)
+    if state is not None and not isinstance(state, dict):
+        runtime_error = f"Unexpected runtime state type: {type(state).__name__}"
+        state = None
     state_path = _runtime_state_path()
     summary = {
         "storage_mode": get_storage_mode(),

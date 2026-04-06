@@ -13,6 +13,7 @@ DATA_DIR = ROOT / "data" / "draft"
 
 CACHE_TTL_SECONDS = 300
 _CACHE: dict = {"ts": 0.0, "data": None}
+_REQUIRED_RUNTIME_KEYS = {"teams", "players", "boards", "draft_order", "order_sources", "pick_values"}
 
 
 def _iso_now() -> str:
@@ -207,6 +208,12 @@ def get_repository_draft_data() -> dict:
     return payload
 
 
+def _is_usable_runtime_payload(payload: object) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    return _REQUIRED_RUNTIME_KEYS.issubset(payload.keys())
+
+
 def reset_cache() -> None:
     _CACHE["ts"] = 0.0
     _CACHE["data"] = None
@@ -222,7 +229,7 @@ def get_draft_data(force_refresh: bool = False) -> dict:
     except Exception:
         payload = None
 
-    if not payload:
+    if not _is_usable_runtime_payload(payload):
         payload = get_repository_draft_data()
 
     _CACHE["data"] = payload
