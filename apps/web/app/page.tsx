@@ -746,6 +746,25 @@ export default function Page() {
     return session.order.filter((pick) => !session.selections[pick.pick]);
   }, [session]);
 
+  const teamSelectionsByPick = useMemo(() => {
+    const snapshots = new Map<number, DraftSelection[]>();
+    if (!session) return snapshots;
+
+    const selectionsByTeam = new Map<string, DraftSelection[]>();
+    session.order.forEach((pick) => {
+      const previousSelections = [...(selectionsByTeam.get(pick.current_team) ?? [])];
+      const currentSelection = session.selections[pick.pick];
+      snapshots.set(
+        pick.pick,
+        currentSelection ? [...previousSelections, currentSelection] : previousSelections
+      );
+      if (currentSelection) {
+        selectionsByTeam.set(pick.current_team, [...previousSelections, currentSelection]);
+      }
+    });
+    return snapshots;
+  }, [session]);
+
   const draftOrderedTeams = useMemo(() => {
     if (!meta) return [];
     const rankMap = new Map<string, number>();
@@ -1601,6 +1620,7 @@ export default function Page() {
             {session?.order.map((pick) => {
               const selection = session.selections[pick.pick];
               const active = currentPick?.pick === pick.pick;
+              const teamSelections = teamSelectionsByPick.get(pick.pick) ?? [];
               return (
                 <div key={pick.pick} className={active ? 'board-pick active' : 'board-pick'}>
                   <div className="board-pick-no">{pick.pick}</div>
@@ -1621,6 +1641,17 @@ export default function Page() {
                     ) : (
                       <div className="board-selection pending">待选择</div>
                     )}
+                    {teamSelections.length > 1 || (!selection && teamSelections.length > 0) ? (
+                      <div className="board-team-history">
+                        <span>本队已选</span>
+                        <strong>
+                          {teamSelections
+                            .filter((item) => item.pick !== pick.pick)
+                            .map((item) => `${item.player_name} (#${item.pick})`)
+                            .join('，')}
+                        </strong>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );

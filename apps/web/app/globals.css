@@ -764,6 +764,10 @@ button {
   border-bottom: 1px solid var(--line);
 }
 
+.panel-board .panel-head {
+  padding: 14px 16px 12px;
+}
+
 .panel-head h2 {
   margin: 3px 0 0;
   font-family: var(--font-display, "Bebas Neue", sans-serif);
@@ -789,17 +793,18 @@ button {
 
 .board-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   max-height: 920px;
   overflow: auto;
+  padding: 12px 14px 14px;
 }
 
 .board-pick {
   display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 16px;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 14px;
   background: rgba(19, 33, 58, 0.04);
   border: 1px solid transparent;
 }
@@ -813,17 +818,17 @@ button {
 .board-pick-no {
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--navy);
   color: white;
   font-family: var(--font-display, "Bebas Neue", sans-serif);
-  font-size: 28px;
+  font-size: 24px;
   letter-spacing: 0.04em;
 }
 
 .board-pick-main {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .board-team-line,
@@ -836,7 +841,7 @@ button {
 
 .board-team-line {
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -847,40 +852,61 @@ button {
 }
 
 .team-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--navy);
 }
 
 .clock-chip {
-  padding: 4px 9px;
+  padding: 3px 7px;
   border-radius: 999px;
   background: rgba(183, 77, 28, 0.14);
   color: var(--accent);
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-family: var(--font-mono, "Space Mono", monospace);
 }
 
 .board-via {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--ink-faint);
 }
 
 .board-selection {
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 
 .board-selection strong {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .board-selection span,
 .board-selection.pending {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-soft);
+}
+
+.board-team-history {
+  display: grid;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.board-team-history span {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  font-family: var(--font-mono, "Space Mono", monospace);
+}
+
+.board-team-history strong {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .panel-bigboard {
