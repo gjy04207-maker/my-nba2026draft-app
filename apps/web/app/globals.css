@@ -910,7 +910,11 @@ button {
 }
 
 .panel-bigboard {
-  min-height: 920px;
+  min-height: 0;
+  height: calc(100vh - 210px);
+  max-height: calc(100vh - 210px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .board-head-meta {
@@ -958,6 +962,9 @@ button {
 .prospect-table {
   display: grid;
   gap: 10px;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
 }
 
 .prospect-header,
@@ -970,6 +977,10 @@ button {
 
 .prospect-header {
   padding: 0 4px 6px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(252, 245, 235, 0.98), rgba(252, 245, 235, 0.94));
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
@@ -1719,6 +1730,11 @@ button {
     margin-top: 18px;
   }
 
+  .panel-bigboard {
+    height: 760px;
+    max-height: 760px;
+  }
+
   .contracts-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1754,6 +1770,11 @@ button {
 
   .workspace {
     display: grid;
+  }
+
+  .panel-bigboard {
+    height: 680px;
+    max-height: 680px;
   }
 
   .board-head-meta,
@@ -1872,5 +1893,10 @@ button {
 
   .panel-head h2 {
     font-size: 24px;
+  }
+
+  .panel-bigboard {
+    height: 62vh;
+    max-height: 62vh;
   }
 }
