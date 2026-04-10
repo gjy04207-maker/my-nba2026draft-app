@@ -148,6 +148,63 @@ WORKBOOK_HEADERS = {
     "BB": "offensive_involvement",
 }
 
+WORKBOOK_HEADER_ALIASES = {
+    "中文译名": "name_zh",
+    "预测顺位": "projected_pick",
+    "年级": "class_year",
+    "位置": "position_raw",
+    "身高": "height_cm",
+    "臂展": "wingspan_cm",
+    "体重": "weight_kg",
+    "所在大学": "school",
+    "所属赛区": "conference",
+    "场均时间": "minutes",
+    "FG": "fg",
+    "FGA": "fga",
+    "FG%": "fg_pct",
+    "3P": "three_p",
+    "3PA": "three_pa",
+    "3P%": "three_pct",
+    "2P": "two_p",
+    "2PA": "two_pa",
+    "2P%": "two_pct",
+    "eFG%": "efg_pct",
+    "FT": "ft",
+    "FTA": "fta",
+    "FT%": "ft_pct",
+    "ORB": "orb",
+    "DRB": "drb",
+    "TRB": "trb",
+    "AST": "ast",
+    "STL": "stl",
+    "BLK": "blk",
+    "TOV": "tov",
+    "PF": "pf",
+    "PTS": "pts",
+    "PER": "per",
+    "TS%": "ts_pct",
+    "3PAr": "three_par",
+    "FTr": "ftr",
+    "PProd": "pprod",
+    "ORB%": "orb_pct",
+    "DRB%": "drb_pct",
+    "TRB%": "trb_pct",
+    "AST%": "ast_pct",
+    "STL%": "stl_pct",
+    "BLK%": "blk_pct",
+    "TOV%": "tov_pct",
+    "USG%": "usg_pct",
+    "OWS": "ows",
+    "DWS": "dws",
+    "WS": "ws",
+    "WS/40": "ws_per_40",
+    "obpm": "obpm",
+    "dbpm": "dbpm",
+    "bpm": "bpm",
+    "助失比": "ast_to_turnover",
+    "进攻参与度": "offensive_involvement",
+}
+
 
 def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -201,8 +258,41 @@ def parse_number(value: str) -> int | float | None:
     value = collapse_spaces(value)
     if not value:
         return None
+    if value.upper() in {"#N/A", "N/A", "#DIV/0!", "#VALUE!", "NA", "NAN", "NONE", "-"}:
+        return None
     number = float(value)
     return int(number) if number.is_integer() else round(number, 3)
+
+
+def column_letters(cell_ref: str) -> str:
+    return "".join(char for char in cell_ref if char.isalpha())
+
+
+def workbook_columns(sheet_root: ET.Element, namespace: dict[str, str], shared_strings: list[str]) -> dict[str, str]:
+    rows = sheet_root.findall(".//a:sheetData/a:row", namespace)
+    if not rows:
+        return dict(WORKBOOK_HEADERS)
+
+    header_row = rows[0]
+    detected: dict[str, str] = {}
+    for cell in header_row.findall("a:c", namespace):
+        ref = cell.attrib.get("r", "")
+        col = column_letters(ref)
+        value_node = cell.find("a:v", namespace)
+        if value_node is None:
+            continue
+        value = value_node.text or ""
+        if cell.attrib.get("t") == "s":
+            value = shared_strings[int(value)]
+        key = WORKBOOK_HEADER_ALIASES.get(collapse_spaces(value))
+        if key:
+            detected[col] = key
+
+    if len(detected) >= 20:
+        detected.setdefault("B", "name_en")
+        return detected
+
+    return dict(WORKBOOK_HEADERS)
 
 
 def xlsx_rows(workbook_path: Path) -> list[dict[str, str]]:
@@ -216,13 +306,16 @@ def xlsx_rows(workbook_path: Path) -> list[dict[str, str]]:
             shared_strings.append(text)
 
         sheet_root = ET.fromstring(archive.read("xl/worksheets/sheet1.xml"))
+        active_columns = workbook_columns(sheet_root, namespace, shared_strings)
+        expected_keys = {key for key in WORKBOOK_HEADERS.values() if not key.startswith("wingspan")}
+
         for row in sheet_root.findall(".//a:sheetData/a:row", namespace)[1:]:
-            parsed: dict[str, str] = {}
-            for col, key in WORKBOOK_HEADERS.items():
-                ref = f"{col}{row.attrib['r']}"
-                cell = row.find(f"a:c[@r='{ref}']", namespace)
-                if cell is None:
-                    parsed[key] = ""
+            parsed: dict[str, str] = {key: "" for key in expected_keys}
+            for cell in row.findall("a:c", namespace):
+                ref = cell.attrib.get("r", "")
+                col = column_letters(ref)
+                key = active_columns.get(col)
+                if not key or key.startswith("wingspan"):
                     continue
                 value_node = cell.find("a:v", namespace)
                 if value_node is None:
